@@ -4,6 +4,7 @@
  *   node server.js            -> http://localhost:3000
  * Env: PORT, DATA_DIR, TRUST_PROXY=1 (behind a proxy), COOKIE_SECURE=true, FX_REFRESH=off
  */
+if (!process.env.UV_THREADPOOL_SIZE) process.env.UV_THREADPOOL_SIZE = '8';
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,6 +20,10 @@ const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const RESOURCES = ['debts', 'receivables', 'investments', 'goals'];
+const MAX_BODY = 100 * 1024;
+const MAX_PER_RESOURCE = 1000;   // records per user, per portal
+const MAX_AMOUNT = 1e15;         // same ceiling the validators use
+const MAX_EMAIL = 200;
 
 // ---------------------------------------------------------------- helpers
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -34,8 +39,16 @@ function send(res, status, body, headers = {}) {
   res.end(data);
 }
 
+// Behind a reverse proxy the real client address is appended by the proxy on the RIGHT of X-Forwarded-For. The left
+// side is whatever the client chose to send, so it must never be used for rate limiting. CLIENT_IP_HOPS is how many
+// trusted proxies sit in front of the app (default 1).
+const IP_HOPS = Math.max(1, Number(process.env.CLIENT_IP_HOPS) || 1);
 function clientIp(req) {
-  if (TRUST_PROXY && req.headers['x-forwarded-for']) return String(req.headers['x-forwarded-for']).split(',')[0].trim();
+  const xff = req.headers['x-forwarded-for'];
+  if (TRUST_PROXY && xff) {
+    const parts = String(xff).split(',').map((x) => x.trim()).filter(Boolean);
+    if (parts.length) return parts[Math.max(0, parts.length - IP_HOPS)].slice(0, 64);
+  }
   return req.socket.remoteAddress || 'unknown';
 }
 function isSecure(req) {
@@ -44,13 +57,16 @@ function isSecure(req) {
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
-    let size = 0; const chunks = [];
+    let size = 0, tooBig = false; const chunks = [];
+    if (Number(req.headers['content-length']) > MAX_BODY) { tooBig = true; reject(new HttpError(413, 'Request too large')); }
     req.on('data', (c) => {
+      if (tooBig) return;                       // discard the rest; the connection is closed after the 413 is sent
       size += c.length;
-      if (size > 100 * 1024) { reject(new HttpError(413, 'Request too large')); req.destroy(); return; }
+      if (size > MAX_BODY) { tooBig = true; chunks.length = 0; reject(new HttpError(413, 'Request too large')); return; }
       chunks.push(c);
     });
     req.on('end', () => {
+      if (tooBig) return;
       if (!chunks.length) return resolve({});
       try {
         const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -78,7 +94,7 @@ const csvCell = (v) => {
 
 function cleanEmail(e) {
   const v = String(e || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) || v.length > 200) throw new ValidationError('Enter a valid email address', 'email');
+  if (v.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) throw new ValidationError('Enter a valid email address', 'email');
   return v;
 }
 
@@ -113,10 +129,18 @@ route('GET', '/api/session', ({ req }) => {
 }, { auth: false });
 
 const regHits = new Map();
+let regAll = [];                    // every sign-up in the last hour, whatever the address
+const REG_PER_IP = 20, REG_GLOBAL = 300;
+setInterval(() => {
+  const now = Date.now();
+  regAll = regAll.filter((t) => now - t < 3600000);
+  for (const [ip, list] of regHits) { const keep = list.filter((t) => now - t < 3600000); if (keep.length) regHits.set(ip, keep); else regHits.delete(ip); }
+}, 10 * 60 * 1000).unref();
 route('POST', '/api/auth/register', async ({ body, req, res }) => {
   const ip = clientIp(req);
   const hits = (regHits.get(ip) || []).filter((t) => Date.now() - t < 3600000);
-  if (hits.length >= 10) throw new HttpError(429, 'Too many sign-ups from this network. Please try again later.');
+  regAll = regAll.filter((t) => Date.now() - t < 3600000);
+  if (hits.length >= REG_PER_IP || regAll.length >= REG_GLOBAL) throw new HttpError(429, 'Too many sign-ups right now. Please try again later.');
 
   const name = clean({ name: { type: 'text', required: true, max: 80, label: 'Name' } }, body).name;
   const email = cleanEmail(body.email);
@@ -131,7 +155,7 @@ route('POST', '/api/auth/register', async ({ body, req, res }) => {
   try {
     id = Number(db.prepare('INSERT INTO users (name, email, password_hash, country, currency) VALUES (?, ?, ?, ?, ?)').run(name, email, hash, country.code, currency).lastInsertRowid);
   } catch { throw new HttpError(409, 'An account with this email already exists. Try signing in.'); }
-  hits.push(Date.now()); regHits.set(ip, hits);
+  hits.push(Date.now()); regHits.set(ip, hits); regAll.push(Date.now());
 
   const { token, maxAge } = auth.createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -140,8 +164,8 @@ route('POST', '/api/auth/register', async ({ body, req, res }) => {
 
 route('POST', '/api/auth/login', async ({ body, req }) => {
   const ip = clientIp(req);
-  const email = String(body.email || '').trim().toLowerCase();
-  const password = typeof body.password === 'string' ? body.password : '';
+  const email = String(body.email || '').trim().toLowerCase().slice(0, MAX_EMAIL);
+  const password = typeof body.password === 'string' ? body.password.slice(0, 256) : '';
   if (auth.isLocked(ip, email)) throw new HttpError(429, 'Too many failed attempts. Please wait 15 minutes and try again.');
   const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   let ok = false;
@@ -247,6 +271,9 @@ const asId = (s) => { const n = Number(s); if (!Number.isInteger(n) || n <= 0) t
 
 for (const table of RESOURCES) {
   route('POST', `/api/${table}`, ({ user, body }) => {
+    if (db.prepare(`SELECT COUNT(*) c FROM ${table} WHERE user_id = ?`).get(user.id).c >= MAX_PER_RESOURCE) {
+      throw new HttpError(409, `You have reached the limit of ${MAX_PER_RESOURCE} records here. Delete some you no longer need first.`);
+    }
     const data = clean(SPECS[table], body);
     if ((table === 'debts' || table === 'receivables') && !data.original_amount) data.original_amount = data.balance;
     const cols = Object.keys(data);
@@ -291,17 +318,19 @@ for (const table of RESOURCES) {
     if (!isDate(day)) throw new ValidationError('Date is not valid', 'day');
     const note = String(body.note || '').trim().slice(0, 200);
     let applied;
+    const tooBigNow = (v) => { if (v > MAX_AMOUNT) throw new ValidationError('That would make the amount too large', 'delta'); return v; };
     if (table === 'debts' || table === 'receivables') {
-      const next = Math.max(0, fin.r2(row.balance + delta));
+      const next = tooBigNow(Math.max(0, fin.r2(row.balance + delta)));
+      tooBigNow(row.original_amount + Math.max(0, fin.r2(next - row.balance)));
       applied = fin.r2(next - row.balance);
       db.prepare(`UPDATE ${table} SET balance = ?, original_amount = original_amount + ?, updated_at = datetime('now') WHERE id = ?`).run(next, Math.max(0, applied), id);
     } else if (table === 'goals') {
-      const next = Math.max(0, fin.r2(row.saved_amount + delta));
+      const next = tooBigNow(Math.max(0, fin.r2(row.saved_amount + delta)));
       applied = fin.r2(next - row.saved_amount);
       db.prepare("UPDATE goals SET saved_amount = ?, updated_at = datetime('now') WHERE id = ?").run(next, id);
     } else {
-      const inv = Math.max(0, fin.r2(row.amount_invested + delta));
-      const val = Math.max(0, fin.r2(row.current_value + delta));
+      const inv = tooBigNow(Math.max(0, fin.r2(row.amount_invested + delta)));
+      const val = tooBigNow(Math.max(0, fin.r2(row.current_value + delta)));
       applied = fin.r2(val - row.current_value);
       db.prepare("UPDATE investments SET amount_invested = ?, current_value = ?, updated_at = datetime('now') WHERE id = ?").run(inv, val, id);
       db.prepare('INSERT INTO valuations (user_id, investment_id, value, day) VALUES (?, ?, ?, ?)').run(user.id, id, val, day);
@@ -371,12 +400,23 @@ function serveStatic(req, res, pathname) {
 }
 
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
+
+// ---------------------------------------------------------------- per-user write rate limit
+const writes = new Map();
+function tooManyWrites(userId) {
+  const now = Date.now();
+  const w = writes.get(userId);
+  if (!w || now - w.start > 60000) { if (writes.size > 20000) writes.clear(); writes.set(userId, { start: now, n: 1 }); return false; }
+  return ++w.n > 240;               // 240 changes a minute is far beyond normal use
+}
 
 // ---------------------------------------------------------------- server
 const server = http.createServer(async (req, res) => {
@@ -410,13 +450,14 @@ const server = http.createServer(async (req, res) => {
       pathMatched = true;
       if (r.method !== req.method) continue;
       matched = r;
-      r.keys.forEach((k, i) => { params[k] = decodeURIComponent(m[i + 1]); });
+      try { r.keys.forEach((k, i) => { params[k] = decodeURIComponent(m[i + 1]); }); } catch { throw new HttpError(400, 'Bad request'); }
       break;
     }
     if (!matched) throw new HttpError(pathMatched ? 405 : 404, pathMatched ? 'Method not allowed' : 'Not found');
 
     const user = auth.userFromRequest(req);
     if (matched.auth && !user) throw new HttpError(401, 'Please sign in');
+    if (user && mutating && tooManyWrites(user.id)) throw new HttpError(429, 'You are doing that too quickly. Please slow down.');
 
     const body = mutating ? await readBody(req) : {};
     const result = await matched.handler({ req, res, user, params, body, query: url.searchParams });
@@ -428,7 +469,12 @@ const server = http.createServer(async (req, res) => {
     return send(res, result.status, result.body, headers);
   } catch (err) {
     if (err instanceof ValidationError) return send(res, 400, { error: err.message, field: err.field });
-    if (err instanceof HttpError) return send(res, err.status, { error: err.message });
+    if (err && err.busy) return send(res, 503, { error: err.message }, { 'Retry-After': '5' });
+    if (err instanceof HttpError) {
+      // for an oversized upload, answer and then close the connection instead of reading the rest of it
+      if (err.status === 413) { res.once('finish', () => req.destroy()); return send(res, 413, { error: err.message }, { Connection: 'close' }); }
+      return send(res, err.status, { error: err.message });
+    }
     console.error('[error]', err);
     if (!res.headersSent) send(res, 500, { error: 'Something went wrong. Please try again.' });
   }
