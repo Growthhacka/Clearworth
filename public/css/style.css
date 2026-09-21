@@ -85,7 +85,7 @@ svg { display: block; }
 .tile .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .tile .value { font-size: 26px; font-weight: 650; margin-top: 6px; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .tile .foot { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-.delta { font-weight: 600; } .delta.good { color: var(--good); } .delta.bad { color: var(--bad); }
+.delta { font-weight: 600; white-space: nowrap; } .delta.good { color: var(--good); } .delta.bad { color: var(--bad); }
 .hero-num { font-size: clamp(40px, 6vw, 56px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; overflow-wrap: anywhere; }
 .hero-num.neg { color: var(--bad); }
 hr.sep { border: 0; border-top: 1px solid var(--grid); margin: 14px 0; }
@@ -234,7 +234,7 @@ hr.sep { border: 0; border-top: 1px solid var(--grid); margin: 14px 0; }
 .mock { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 22px; box-shadow: 0 30px 80px rgba(20, 30, 60, 0.14); }
 .mock .mock-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
 .mock .big { font-size: 44px; font-weight: 750; letter-spacing: -0.03em; margin: 4px 0 2px; }
-.mock .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.mock .mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .mock .mini div { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--muted); }
 .mock .mini b { display: block; font-size: 16px; color: var(--ink); margin-top: 2px; }
 .mock ul { list-style: none; margin: 16px 0 0; padding: 0; }
@@ -270,22 +270,22 @@ footer.foot .wrap { display: flex; justify-content: space-between; flex-wrap: wr
 .prose h1 { font-size: 34px; margin-bottom: 8px; } .prose h2 { font-size: 20px; margin: 30px 0 8px; } .prose p, .prose li { color: var(--ink-2); margin-bottom: 10px; }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g-main { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g-main { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(300px, 86vw); z-index: 90; transform: translateX(-102%); transition: transform .2s; }
   body.nav-open .sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, .25); }
   body.nav-open .scrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 80; }
   .topbar { padding: 10px 16px; } .topbar .menu-btn { display: inline-flex; }
   .content { padding: 20px 16px 60px; }
   .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero { grid-template-columns: 1fr; padding-top: 24px; } .feats, .steps { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: minmax(0, 1fr); padding-top: 24px; } .feats, .steps { grid-template-columns: minmax(0, 1fr); }
   .nav-top .links .plain { display: none; }
 }
 @media (max-width: 640px) {
-  .g2, .g3, .g4 { grid-template-columns: 1fr; }
+  .g2, .g3, .g4 { grid-template-columns: minmax(0, 1fr); }
   .g4.tiles-sm, .g3.tiles-sm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .items { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; }
+  .items { grid-template-columns: minmax(0, 1fr); } .form-grid { grid-template-columns: minmax(0, 1fr); }
   .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tile .value { font-size: 21px; } .page-head h1 { font-size: 24px; }
   .section { padding: 56px 0; }
@@ -303,3 +303,50 @@ footer.foot .wrap { display: flex; justify-content: space-between; flex-wrap: wr
 @media (max-width: 640px) { .tile .value { font-size: 18px; letter-spacing: 0; } .tile { padding: 14px; } .hero-num { font-size: 34px; } }
 
 .chart text { pointer-events: none; }
+
+/* ---------- phone polish ---------- */
+html { overflow-x: hidden; }                                   /* safety net: the page must never scroll sideways */
+.modal { max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overscroll-behavior: contain; }
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .nav-top { height: 60px; gap: 8px; }
+  .nav-top .brand { padding: 0; font-size: 18px; gap: 8px; min-width: 0; flex: 0 1 auto; }
+  .nav-top .brand svg { width: 28px; height: 28px; }
+  .nav-top .links { gap: 2px; flex: none; }
+  .nav-top .links .btn { padding: 0 12px; }
+  .nav-top .links .btn.icon { width: 40px; padding: 0; }
+  .hero .cta .btn { width: 100%; }
+  .hero h1 { font-size: clamp(38px, 12vw, 52px); }
+  .hero .lead { font-size: 17px; }
+  /* dialogs become full-width sheets that sit at the bottom, clear of the home bar */
+  .overlay { padding: 0; align-items: flex-end; }
+  .modal, .modal.wide, .modal.narrow { max-width: none; border-radius: 18px 18px 0 0; max-height: 92vh; max-height: 92dvh; }
+  .modal-head { padding: 16px 16px 0; }
+  .modal-body { padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .modal-foot { flex-wrap: wrap; }
+  .modal-foot .btn { flex: 1 1 auto; }
+  /* 16px fields stop iPhones zooming the whole page when you tap into one */
+  input, select, textarea { font-size: 16px; }
+  .btn { min-height: 40px; }
+  .btn.sm { min-height: 36px; }
+  .foot .wrap { flex-direction: column; }
+}
+@media (max-width: 400px) { .nav-top #theme { display: none; } }   /* dark mode follows the phone setting */
+@media (max-width: 340px) { .nav-top #nav-login { display: none; } }
+.hero > *, .card, .g-main > * { min-width: 0; }
+@media (max-width: 640px) {
+  .chip { min-height: 38px; }
+  .toggle-table { min-height: 36px; }
+}
+@media (max-width: 640px) {
+  .chart-tools { flex-wrap: wrap; }
+  .mock { padding: 16px; border-radius: 18px; }
+  .mock .big { font-size: 36px; }
+  .mock .mini { gap: 6px; }
+  .mock .mini div { padding: 8px; font-size: 11.5px; overflow-wrap: anywhere; }
+  .mock .mini b { font-size: 14px; }
+  .mock li { gap: 8px; flex-wrap: wrap; }
+}
+@media (max-width: 640px) { .hero .cta .btn { width: 100%; padding: 0 16px; white-space: normal; text-align: center; } .hero .cta { width: 100%; } }
+@media (max-width: 640px) { .cta-card { padding: 32px 20px; } .cta-card .btn.lg { width: 100%; padding: 0 16px; white-space: normal; } }
+.btn.lg { max-width: 100%; }
