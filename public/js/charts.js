@@ -85,7 +85,7 @@
     const sx = (x) => L + ((x - xmin) / (xmax - xmin)) * (W - L - Rm);
     const sy = (y) => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
     const xTicks = [];
-    const n = Math.min(5, Math.max(2, new Set(allX).size));
+    const n = Math.min(typeof innerWidth !== 'undefined' && innerWidth < 640 ? 3 : 5, Math.max(2, new Set(allX).size)); // fewer date labels on phones so they never collide
     for (let i = 0; i < n; i++) xTicks.push(xmin + ((xmax - xmin) * i) / (n - 1));
 
     const grid = ticks.map((t) => html`<line x1="${L}" x2="${W - Rm}" y1="${sy(t)}" y2="${sy(t)}" stroke="${t === 0 ? 'var(--line)' : 'var(--grid)'}"/><text x="${L - 8}" y="${sy(t) + 4}" text-anchor="end">${opts.yFmt ? opts.yFmt(t) : t}</text>`);
