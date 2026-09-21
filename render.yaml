@@ -18,7 +18,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: DATA_DIR
-        value: /var/data
+        value: /tmp/clearworth-data
     # disk:
     #   name: clearworth-data
     #   mountPath: /var/data
