@@ -1,0 +1,25 @@
+# One-click deploy on Render: dashboard -> New -> Blueprint -> pick your GitHub repo.
+# The free plan gives you a public https link but NO persistent disk, so the SQLite
+# database resets whenever the service restarts or redeploys. Fine for a demo.
+# For real users, switch plan to "starter" and uncomment the disk block below.
+services:
+  - type: web
+    name: clearworth
+    runtime: node
+    plan: free
+    buildCommand: echo "no build step, zero dependencies"
+    startCommand: node --no-warnings server.js
+    healthCheckPath: /api/meta
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DATA_DIR
+        value: /var/data
+    # disk:
+    #   name: clearworth-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

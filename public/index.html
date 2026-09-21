@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clearworth: Owe less. Own more.</title>
+<meta name="description" content="Clearworth tracks every debt you owe, everyone who owes you, and everything you own, from land and apartments to farms and funds, in one private net worth dashboard. Built for Nigeria, the UK, UAE, USA and 30+ more countries.">
+<meta name="theme-color" content="#256abf">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/js/theme.js"></script>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="land">
+<header class="wrap nav-top">
+  <a class="brand" href="/" style="padding:0"><span id="logo"></span>Clearworth</a>
+  <nav class="links">
+    <a class="plain" href="#features">Features</a>
+    <a class="plain" href="#countries">Countries</a>
+    <a class="plain" href="#security">Privacy</a>
+    <button class="btn ghost icon" id="theme" aria-label="Toggle dark mode"></button>
+    <a class="btn ghost" href="#login" data-auth="login" id="nav-login">Log in</a>
+    <a class="btn primary" href="#signup" data-auth="signup" id="nav-signup">Start free</a>
+  </nav>
+</header>
+
+<main>
+<section class="wrap hero">
+  <div>
+    <h1>Owe less.<br><em>Own more.</em></h1>
+    <p class="lead">See every debt you owe, everyone who owes you, and everything you have built, from land and apartments to farms and funds, in one private dashboard. Know your real net worth in your own currency, then plan your way to debt-free.</p>
+    <div class="cta">
+      <a class="btn primary lg" href="#signup" data-auth="signup">Create your free account</a>
+      <a class="btn lg" href="#features">See what you get</a>
+    </div>
+    <div class="fine" id="fine"></div>
+  </div>
+  <div class="mock" aria-label="Example dashboard preview">
+    <div class="mock-top"><span>Your net worth</span><span class="badge brand">Example</span></div>
+    <div class="big">£184,320</div>
+    <div class="row" style="font-size:13px"><span class="delta good">+£6,240</span><span class="muted">in the last 30 days</span></div>
+    <svg viewBox="0 0 400 110" style="width:100%;margin-top:10px" aria-hidden="true">
+      <path d="M0 92 C40 88 60 80 100 76 S170 70 210 56 S300 40 340 26 L400 14 L400 110 L0 110Z" fill="var(--s1)" fill-opacity=".10"/>
+      <path d="M0 92 C40 88 60 80 100 76 S170 70 210 56 S300 40 340 26 L400 14" fill="none" stroke="var(--s1)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="400" cy="14" r="5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2.5"/>
+    </svg>
+    <div class="mini">
+      <div>Investments<b>£212,400</b></div>
+      <div>You owe<b style="color:var(--s2)">£31,480</b></div>
+      <div>Owed to you<b>£3,400</b></div>
+    </div>
+    <ul>
+      <li><span>Credit card <span class="tag" style="background:var(--warn-bg);color:var(--warn)">Due in 6d</span></span><b class="num">£3,200</b></li>
+      <li><span>Tuition, term 2 <span class="tag" style="background:var(--brand-soft);color:var(--brand)">Fees</span></span><b class="num">£4,800</b></li>
+      <li><span>2-bed apartment <span class="tag" style="background:var(--good-bg);color:var(--good)">+15.6%</span></span><b class="num">£52,000</b></li>
+    </ul>
+  </div>
+</section>
+
+<div class="band"><div class="wrap" id="band"></div></div>
+
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="kicker">Everything in one place</div>
+    <h2>The full picture of your money, not just your bills.</h2>
+    <p class="lede">Most apps only count what you owe. Clearworth also counts what you have built and what others owe you, so you see where you truly stand.</p>
+    <div class="feats" id="feats"></div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--surface);border-block:1px solid var(--grid)">
+  <div class="wrap">
+    <div class="kicker">How it works</div>
+    <h2>From scattered to clear in ten minutes.</h2>
+    <div class="steps">
+      <div class="step"><h3>Add what you owe</h3><p>Credit cards, loans, tuition and school fees, and money you owe family or friends. Set the interest and monthly payment if you know them.</p></div>
+      <div class="step"><h3>Add what you own</h3><p>Land, apartments, farms, funds, savings, a business stake. Record what you paid and what it is worth today.</p></div>
+      <div class="step"><h3>Watch your net worth grow</h3><p>Log payments as you make them, update values, and follow the debt-free date move closer.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="countries">
+  <div class="wrap">
+    <div class="kicker">Built for where you live</div>
+    <h2>Your country. Your currency. Every currency.</h2>
+    <p class="lede">A UK loan, Nigerian land and a Dubai apartment can all live in the same portfolio. Every item keeps its own currency and Clearworth converts everything into your home currency for one clear total. Exchange rates can be edited any time.</p>
+    <div class="countries" id="country-list"></div>
+  </div>
+</section>
+
+<section class="section" id="security" style="background:var(--surface);border-block:1px solid var(--grid)">
+  <div class="wrap">
+    <div class="kicker">Private by design</div>
+    <h2>Your numbers are yours.</h2>
+    <div class="feats" id="trust"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="cta-card">
+      <h2>Ready to see where you really stand?</h2>
+      <p>Free to start. Set up in minutes. Add sample data to explore first.</p>
+      <a class="btn primary lg" href="#signup" data-auth="signup">Create your free account</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot"><div class="wrap"><span>© <span id="year"></span> Clearworth. Owe less. Own more.</span><span><a href="/privacy">Privacy</a> · Clearworth is a tracking tool and does not give financial advice.</span></div></footer>
+
+<script src="/js/common.js"></script>
+<script src="/js/landing.js"></script>
+</body>
+</html>

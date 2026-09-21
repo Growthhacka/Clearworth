@@ -1,0 +1,13 @@
+{
+  "name": "clearworth",
+  "version": "1.0.0",
+  "description": "Clearworth: track debts, investments and net worth across countries and currencies. Owe less. Own more.",
+  "main": "server.js",
+  "private": true,
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --no-warnings --test test/api.test.js"
+  },
+  "license": "UNLICENSED"
+}
